@@ -1,0 +1,29 @@
+{
+  "name": "lerna-lockfile-updater",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zenwarr/lerna-lockfile-updater.git"
+  },
+  "author": "zenwarr",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zenwarr/lerna-lockfile-updater/issues"
+  },
+  "homepage": "https://github.com/zenwarr/lerna-lockfile-updater#readme",
+  "dependencies": {
+    "@types/lodash": "~4.14.162",
+    "@types/node": "~14.11.8",
+    "lodash": "~4.17.20",
+    "typescript": "~4.0.3"
+  },
+  "bin": {
+    "lerna-lockfile-updater": "./index.js"
+  }
+}

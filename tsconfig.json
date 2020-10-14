@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "sourceMap": false,
+    "module": "commonjs",
+    "target": "ES2017",
+    "esModuleInterop": false,
+    "noEmitOnError": true,
+    "strict": false,
+    "declaration": true,
+    "declarationDir": "declarations"
+  },
+  "exclude": [
+    "declarations/**/*.*"
+  ]
+}
