@@ -2,7 +2,6 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import * as _ from "lodash";
 
 
 function readModulePackage(moduleDir: string): any {
@@ -191,7 +190,7 @@ function markDevDeps(ctx: ModuleCtx) {
       continue;
     }
 
-    walkDeps(ctx, "", nodes, depName, entry, true, [], walked);
+    walkDeps(ctx, [], nodes, depName, entry, true, [], walked);
   }
 
   if (!nodes.size) {
@@ -205,27 +204,53 @@ function markDevDeps(ctx: ModuleCtx) {
       continue;
     }
 
-    walkDeps(ctx, "", nodes, depName, entry, false, [], walked);
+    walkDeps(ctx, [], nodes, depName, entry, false, [], walked);
   }
 
   nodes.forEach((isDev, entryPath) => {
     if (isDev) {
-      _.set(ctx.rootDeps, entryPath + ".dev", true);
+      setValueByPath(ctx.rootDeps, [ ...splitEntryPath(entryPath), "dev" ], true);
     }
   });
 }
 
-function walkDeps(ctx: ModuleCtx, pathPrefix: string, nodes: Map<string, boolean>, entryName: string, entry: any, isDev: boolean, parentLocals: string[], walked: Set<string>) {
-  let entryPath = pathPrefix ? pathPrefix + ".dependencies." + entryName : entryName;
-  if (walked.has(entryPath)) {
+function setValueByPath(obj: any, parts: string[], value: unknown) {
+  if (parts.length === 0) {
     return;
   }
 
-  if (!nodes.has(entryPath)) {
-    nodes.set(entryPath, isDev);
+  let cur = parts[0];
+
+  if (parts.length === 1) {
+    obj[cur] = value;
+  } else if (parts.length) {
+    if (!(cur in obj)) {
+      obj[cur] = {};
+    }
+    setValueByPath(obj[cur], parts.slice(1), value);
+  }
+}
+
+function splitEntryPath(value: string): string[] {
+  return value.split("#");
+}
+
+function getEntryPathKey(p: string[]) {
+  return p.join("#");
+}
+
+function walkDeps(ctx: ModuleCtx, pathPrefix: string[], nodes: Map<string, boolean>, entryName: string, entry: any, isDev: boolean, parentLocals: string[], walked: Set<string>) {
+  let entryPath: string[] = pathPrefix.length ? [ ...pathPrefix, "dependencies", entryName ] : [ entryName ];
+  let entryPathKey = getEntryPathKey(entryPath);
+  if (walked.has(entryPathKey)) {
+    return;
   }
 
-  walked.add(entryPath);
+  if (!nodes.has(entryPathKey)) {
+    nodes.set(entryPathKey, isDev);
+  }
+
+  walked.add(entryPathKey);
 
   let requires = entry.requires || {};
   let localDeps = entry.dependencies || {};
@@ -236,7 +261,7 @@ function walkDeps(ctx: ModuleCtx, pathPrefix: string, nodes: Map<string, boolean
         ...Object.keys(localDeps)
       ], walked);
     } else if (!parentLocals.includes(depName)) {
-      walkDeps(ctx, "", nodes, depName, ctx.rootDeps[depName], isDev, [], walked);
+      walkDeps(ctx, [], nodes, depName, ctx.rootDeps[depName], isDev, [], walked);
     }
   }
 }
