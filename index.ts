@@ -2,6 +2,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import * as child_process from "child_process";
 
 
 function readModulePackage(moduleDir: string): any {
@@ -148,7 +149,7 @@ function createLockfileEntryFromDep(ctx: ModuleCtx, packageDir: string, depName:
   return { hoist: lstat.isSymbolicLink(), entry };
 }
 
-function saveLockfile(ctx: ModuleCtx) {
+async function saveLockfile(ctx: ModuleCtx) {
   let pkg = readModulePackage(ctx.dir);
   let lockfile = {
     name: pkg.name,
@@ -159,19 +160,16 @@ function saveLockfile(ctx: ModuleCtx) {
   };
 
   let lockfileLocation = path.join(ctx.dir, "package-lock.json");
+  let originalContents = await readFileFromHeadOrNow(lockfileLocation);
 
-  let existing;
+  let original = {};
   try {
-    existing = JSON.parse(fs.readFileSync(lockfileLocation, "utf-8"));
+    original = JSON.parse(originalContents);
   } catch (e) {
-    if (e.code === "ENOENT") {
-      existing = {};
-    } else {
-      throw e;
-    }
+    // do nothing
   }
 
-  fs.writeFileSync(lockfileLocation, JSON.stringify(merge(existing, lockfile), undefined, 2), "utf-8");
+  fs.writeFileSync(lockfileLocation, JSON.stringify(transformInto(original, lockfile), undefined, 2), "utf-8");
 }
 
 function markDevDeps(ctx: ModuleCtx) {
@@ -270,7 +268,7 @@ function isObject(x: unknown): x is object {
   return typeof x === "object" && x != null;
 }
 
-function merge(into: any, actual: any): any {
+function transformInto(into: any, actual: any): any {
   if (!(isObject(into) && isObject(actual))) {
     return actual;
   }
@@ -281,7 +279,7 @@ function merge(into: any, actual: any): any {
 
   for (let key of Object.keys(into)) {
     if (key in actual) {
-      into[key] = merge(into[key], actual[key]);
+      into[key] = transformInto(into[key], actual[key]);
     } else {
       delete into[key];
     }
@@ -297,7 +295,7 @@ function merge(into: any, actual: any): any {
 }
 
 
-function updateLocks() {
+async function updateLocks() {
   let dir = process.argv[2] || "packages";
   for (let entryName of fs.readdirSync(dir)) {
     let pkgDir = path.join(dir, entryName);
@@ -314,9 +312,36 @@ function updateLocks() {
 
     addDepsFromPackage(ctx, pkgDir, true);
     markDevDeps(ctx);
-    saveLockfile(ctx);
+    await saveLockfile(ctx);
   }
 }
 
 
-updateLocks();
+function readFileFromHeadOrNow(filepath: string): Promise<string | undefined> {
+  let currentFile: string | undefined;
+  try {
+    currentFile = fs.readFileSync(filepath, "utf-8");
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    let dir = path.dirname(filepath);
+    let filename = path.basename(filepath);
+    child_process.execFile("git", [ "show", `HEAD:${ filename }` ], {
+      cwd: dir
+    }, (err, stdout, stderr) => {
+      if (err != null) {
+        console.warn(`Failed to get "${ filename }" contents at HEAD, falling back to actual state...`, stderr);
+      }
+      resolve(err != null ? currentFile : stdout);
+    });
+  });
+}
+
+
+updateLocks().catch(error => {
+  console.error(`Error while updating lockfiles: ${ error.message }`);
+});
