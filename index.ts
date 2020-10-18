@@ -298,6 +298,7 @@ function transformInto(into: any, actual: any): any {
 async function updateLocks() {
   let dir = process.argv[2] || "packages";
   for (let entryName of fs.readdirSync(dir)) {
+    console.log(`Generating lockfile for ${ entryName }...`);
     let pkgDir = path.join(dir, entryName);
 
     let stat = fs.statSync(pkgDir);
