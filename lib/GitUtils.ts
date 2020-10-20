@@ -18,7 +18,7 @@ export async function readFileFromHeadOrNow(filepath: string): Promise<string | 
     }
   }
 
-  return new Promise<string>(resolve => {
+  return new Promise(resolve => {
     let dir = path.dirname(filepath);
     let filename = path.basename(filepath);
     child_process.execFile("git", ["show", `HEAD:./${filename}`], {
