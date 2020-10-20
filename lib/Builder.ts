@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
-import {ManifestReader} from "./ManifestUpdater";
+import {ManifestReader} from "./ManifestReader";
 import {BuildContext, Entry, EntryDeps} from "./Interfaces";
 import {walkEntries, walkNonSubsetDeps} from "./Walkers";
 import {readFileFromHeadOrNow} from "./GitUtils";
