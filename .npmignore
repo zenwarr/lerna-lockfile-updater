@@ -4,3 +4,4 @@ declarations
 *.js
 *.js.map
 *.ts
+.github
