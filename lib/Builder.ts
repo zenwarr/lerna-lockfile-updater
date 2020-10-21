@@ -7,6 +7,7 @@ import { transformInto } from "./TransformObject";
 import { readManifest, readManifestIfExists } from "./ManifestReader";
 import { getClosestParentModulesDir } from "./Utils";
 import { getMetaInfo } from "./MetaInfoResolver";
+import { getYarnLockDir } from "./YarnLock";
 
 
 /**
@@ -137,6 +138,7 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
 function generateLockfile(dir: string, isYarn: boolean): object | undefined {
   let ctx: BuildContext = {
     isYarn,
+    yarnLockDir: isYarn ? getYarnLockDir(dir) : undefined,
     startDir: dir,
     rootDeps: {},
     visited: new Set(),

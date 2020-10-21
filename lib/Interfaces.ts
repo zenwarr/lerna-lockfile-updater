@@ -14,6 +14,7 @@ export interface Entry {
 
 export interface BuildContext {
   isYarn: boolean;
+  yarnLockDir?: string;
   startDir: string;
   rootDeps: EntryDeps;
   visited: Set<string>;
