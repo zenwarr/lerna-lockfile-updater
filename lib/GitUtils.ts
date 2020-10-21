@@ -21,12 +21,9 @@ export async function readFileFromHeadOrNow(filepath: string): Promise<string | 
   return new Promise(resolve => {
     let dir = path.dirname(filepath);
     let filename = path.basename(filepath);
-    child_process.execFile("git", ["show", `HEAD:./${filename}`], {
+    child_process.execFile("git", [ "show", `HEAD:./${ filename }` ], {
       cwd: dir
     }, (err, stdout, stderr) => {
-      if (err != null) {
-        console.warn(`Failed to get "${filename}" contents at HEAD, falling back to actual state...`, stderr);
-      }
       resolve(err != null ? currentFile : stdout);
     });
   });
