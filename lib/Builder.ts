@@ -151,8 +151,8 @@ function generateLockfile(dir: string, isYarn: boolean): object | undefined {
 
   let entry = buildLockfileEntry(ctx, dir, true);
   ctx.rootDeps = {
-    ...entry.dependencies,
-    ...ctx.rootDeps
+    ...ctx.rootDeps,
+    ...entry.dependencies
   };
 
   walkEntries(ctx.rootDeps, dep => {

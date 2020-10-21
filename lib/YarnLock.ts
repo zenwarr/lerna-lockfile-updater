@@ -56,3 +56,19 @@ export function findMetaInYarnLock(lockfile: any, packageName: string, packageVe
 
   return {};
 }
+
+
+export function getYarnLockDir(startDir: string): string | undefined {
+  let root = path.parse(startDir).root;
+  let location = startDir;
+
+  while (location !== root) {
+    if (fs.existsSync(path.join(location, "yarn.lock"))) {
+      return location;
+    }
+
+    location = path.dirname(location);
+  }
+
+  return undefined;
+}

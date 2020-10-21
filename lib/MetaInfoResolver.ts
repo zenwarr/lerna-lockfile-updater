@@ -2,7 +2,7 @@ import * as path from "path";
 import { getClosestParentModulesDir } from "./Utils";
 import { BuildContext } from "./Interfaces";
 import { readManifestIfExists } from "./ManifestReader";
-import { findMetaInYarnLock, readYarnLockIfExists } from "./YarnLock";
+import { findMetaInYarnLock, getYarnLockDir, readYarnLockIfExists } from "./YarnLock";
 
 
 export interface MetaInfo {
@@ -23,12 +23,12 @@ export function getMetaInfo(ctx: BuildContext, dir: string): MetaInfo {
   }
 
   if (ctx.isYarn) {
-    let closestNodeModules = getClosestParentModulesDir(dir);
-    if (!closestNodeModules) {
+    let yarnLockDir = getYarnLockDir(dir);
+    if (!yarnLockDir) {
       return {};
     }
 
-    let lockfile = readYarnLockIfExists(path.dirname(closestNodeModules));
+    let lockfile = readYarnLockIfExists(yarnLockDir);
     if (!lockfile) {
       return {};
     }
