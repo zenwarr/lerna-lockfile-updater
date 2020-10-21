@@ -9,20 +9,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zenwarr/lerna-lockfile-updater.git"
+    "url": "git+https://github.com/zenwarr/lockfile-generator.git"
   },
   "author": "zenwarr",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/zenwarr/lerna-lockfile-updater/issues"
+    "url": "https://github.com/zenwarr/lockfile-generator/issues"
   },
-  "homepage": "https://github.com/zenwarr/lerna-lockfile-updater#readme",
+  "homepage": "https://github.com/zenwarr/lockfile-generator#readme",
   "dependencies": {
     "@yarnpkg/lockfile": "^1.1.0",
     "argparse": "^2.0.1"
   },
   "bin": {
-    "lerna-lockfile-updater": "./index.js"
+    "lockfile-generator": "./index.js"
   },
   "devDependencies": {
     "@types/argparse": "^2.0.2",
