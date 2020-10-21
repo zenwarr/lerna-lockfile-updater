@@ -229,8 +229,9 @@ export async function updateLocks(dirs: string[], isYarn: boolean) {
     try {
       let lockfile = generateLockfile(dir, isYarn);
       if (lockfile) {
-        console.log("No packages found in given directory, skipped");
         await saveLockfile(dir, lockfile);
+      } else {
+        console.log("No packages found in given directory, skipped");
       }
     } catch (e) {
       console.error(`Error generating lockfile for package ${ dir }: ${ e.message }`, e);
