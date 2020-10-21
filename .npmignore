@@ -2,3 +2,5 @@ declarations
 *.js.map
 *.ts
 .github
+.idea
+yarn.lock
