@@ -154,7 +154,7 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
 /**
  * Generates lockfile for a package located at given directory
  */
-function generateLockfile(dir: string, packagesDir: string) {
+function generateLockfile(dir: string, packagesDir: string): object | undefined {
   let ctx: BuildContext = {
     packagesDir,
     startDir: dir,
@@ -164,7 +164,10 @@ function generateLockfile(dir: string, packagesDir: string) {
     resolves: new Map(),
   };
 
-  let manifest = manifestReader.read(dir);
+  let manifest = manifestReader.readIfExists(dir);
+  if (!manifest) {
+    return undefined;
+  }
 
   let entry = buildLockfileEntry(ctx, dir, true);
   ctx.rootDeps = {
@@ -250,7 +253,10 @@ export async function updateLocks() {
       continue;
     }
 
-    await saveLockfile(pkgDir, generateLockfile(pkgDir, dir));
+    let lockfile = generateLockfile(pkgDir, dir);
+    if (lockfile) {
+      await saveLockfile(pkgDir, lockfile);
+    }
   }
 
   let topDir = path.dirname(dir);
