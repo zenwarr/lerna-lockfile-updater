@@ -21,4 +21,4 @@ jobs:
           cmd: publish
         env:
           NPM_AUTH_TOKEN: ${{secrets.npm_token}}
-          NPM_REGISTRY_URL: https://registry.npmjs.org
+          NPM_REGISTRY_URL: registry.npmjs.org
