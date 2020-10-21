@@ -2,7 +2,7 @@ import * as path from "path";
 import { getClosestParentModulesDir } from "./Utils";
 import { BuildContext } from "./Interfaces";
 import { readManifestIfExists } from "./ManifestReader";
-import { readYarnLockIfExists } from "./YarnLock";
+import { findMetaInYarnLock, readYarnLockIfExists } from "./YarnLock";
 
 
 export interface MetaInfo {
@@ -33,26 +33,11 @@ export function getMetaInfo(ctx: BuildContext, dir: string): MetaInfo {
       return {};
     }
 
-    return findMetaInLockfile(lockfile, manifest.name, manifest.version);
+    return findMetaInYarnLock(lockfile, manifest.name, manifest.version);
   } else {
     return {
       resolved: manifest._resolved,
       integrity: manifest._integrity
     };
   }
-}
-
-
-function findMetaInLockfile(lockfile: any, packageName: string, packageVersion: string): MetaInfo {
-  let prefix = packageName + "@";
-  for (let [ key, value ] of Object.entries<any>(lockfile)) {
-    if (key.startsWith(prefix) && value.version === packageVersion) {
-      return {
-        integrity: value.integrity,
-        resolved: value.resolved
-      };
-    }
-  }
-
-  return {};
 }
