@@ -1,10 +1,10 @@
 import * as path from "path";
 import * as fs from "fs";
-import {ManifestReader} from "./ManifestReader";
-import {BuildContext, Entry, EntryDeps} from "./Interfaces";
-import {walkEntries, walkNonSubsetDeps} from "./Walkers";
-import {readFileFromHeadOrNow} from "./GitUtils";
-import {transformInto} from "./TransformObject";
+import { ManifestReader } from "./ManifestReader";
+import { BuildContext, Entry, EntryDeps } from "./Interfaces";
+import { walkEntries, walkNonSubsetDeps } from "./Walkers";
+import { readFileFromHeadOrNow } from "./GitUtils";
+import { transformInto } from "./TransformObject";
 
 
 let manifestReader = new ManifestReader();
@@ -17,7 +17,7 @@ let manifestReader = new ManifestReader();
  */
 function resolvePackageLocation(fromDir: string, packageName: string): string {
   return path.dirname(require.resolve(packageName + "/package.json", {
-    paths: [fromDir]
+    paths: [ fromDir ]
   }));
 }
 
@@ -245,7 +245,7 @@ export async function updateLocks() {
   let dir = process.argv[2] || "packages";
   dir = path.resolve(process.cwd(), dir);
   for (let entryName of fs.readdirSync(dir)) {
-    console.log(`Generating lockfile for ${entryName}...`);
+    console.log(`Generating lockfile for ${ entryName }...`);
     let pkgDir = path.join(dir, entryName);
 
     let stat = fs.statSync(pkgDir);
@@ -253,9 +253,13 @@ export async function updateLocks() {
       continue;
     }
 
-    let lockfile = generateLockfile(pkgDir, dir);
-    if (lockfile) {
-      await saveLockfile(pkgDir, lockfile);
+    try {
+      let lockfile = generateLockfile(pkgDir, dir);
+      if (lockfile) {
+        await saveLockfile(pkgDir, lockfile);
+      }
+    } catch (e) {
+      console.error(`Error generating lockfile for package ${ entryName }: ${ e.message }`, e);
     }
   }
 
