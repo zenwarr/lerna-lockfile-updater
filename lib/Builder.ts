@@ -1,13 +1,12 @@
 import * as path from "path";
 import * as fs from "fs";
-import { ManifestReader } from "./ManifestReader";
 import { BuildContext, Entry, EntryDeps } from "./Interfaces";
 import { walkEntries, walkNonSubsetDeps } from "./Walkers";
 import { readFileFromHeadOrNow } from "./GitUtils";
 import { transformInto } from "./TransformObject";
-
-
-let manifestReader = new ManifestReader();
+import { readManifest, readManifestIfExists } from "./ManifestReader";
+import { getClosestParentModulesDir } from "./Utils";
+import { getMetaInfo } from "./MetaInfoResolver";
 
 
 /**
@@ -45,7 +44,7 @@ function isInstalled(dir: string, packageName: string): boolean {
  * Result is compatible with package-lock `requires` field format.
  */
 function getRequires(dir: string, includeDev: boolean = false) {
-  let manifest = manifestReader.read(dir);
+  let manifest = readManifest(dir);
 
   let requires = {
     ...manifest.dependencies,
@@ -60,24 +59,6 @@ function getRequires(dir: string, includeDev: boolean = false) {
   }
 
   return requires;
-}
-
-
-/**
- * Given a path, returns a path to the closest parent `node_modules` directory, if exists.
- */
-function getModulesDir(location: string): string | undefined {
-  let root = path.parse(location).root;
-
-  while (true) {
-    if (path.basename(location) === "node_modules") {
-      return location;
-    } else if (location === root) {
-      return undefined;
-    }
-
-    location = path.dirname(location);
-  }
 }
 
 
@@ -104,14 +85,13 @@ function getDependencyTarget(ctx: BuildContext, modulesDir: string): EntryDeps {
  * When generating lockfile, only devDependencies of the root package should be taken into account.
  */
 function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean): Entry {
-  let manifest = manifestReader.read(dir);
+  let manifest = readManifest(dir);
 
   let requires = getRequires(dir, includeDev);
 
   let entry: Entry = {
     version: manifest.version,
-    integrity: manifest._integrity,
-    resolved: manifest._resolved,
+    ...getMetaInfo(ctx, dir),
     requires: requires,
     dependencies: {}
   };
@@ -130,7 +110,7 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
 
     let depsObject: EntryDeps;
 
-    let modulesDir = getModulesDir(resolvedDir);
+    let modulesDir = getClosestParentModulesDir(resolvedDir);
     if (!modulesDir) {
       depsObject = ctx.rootDeps;
     } else {
@@ -154,9 +134,9 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
 /**
  * Generates lockfile for a package located at given directory
  */
-function generateLockfile(dir: string, packagesDir: string): object | undefined {
+function generateLockfile(dir: string, isYarn: boolean): object | undefined {
   let ctx: BuildContext = {
-    packagesDir,
+    isYarn,
     startDir: dir,
     rootDeps: {},
     visited: new Set(),
@@ -164,7 +144,7 @@ function generateLockfile(dir: string, packagesDir: string): object | undefined 
     resolves: new Map(),
   };
 
-  let manifest = manifestReader.readIfExists(dir);
+  let manifest = readManifestIfExists(dir);
   if (!manifest) {
     return undefined;
   }
@@ -214,7 +194,7 @@ async function saveLockfile(dir: string, lockfile: any) {
 
 
 function markDevDeps(ctx: BuildContext) {
-  let manifest = manifestReader.read(ctx.startDir);
+  let manifest = readManifest(ctx.startDir);
   let nonDevDeps = {
     ...manifest.dependencies,
     ...manifest.optionalDependencies,
@@ -228,7 +208,7 @@ function markDevDeps(ctx: BuildContext) {
 
 
 function markOptionalDeps(ctx: BuildContext) {
-  let manifest = manifestReader.read(ctx.startDir);
+  let manifest = readManifest(ctx.startDir);
   let nonOptionalDeps = {
     ...manifest.dependencies,
     ...manifest.devDependencies,
@@ -241,29 +221,18 @@ function markOptionalDeps(ctx: BuildContext) {
 }
 
 
-export async function updateLocks() {
-  let dir = process.argv[2] || "packages";
-  dir = path.resolve(process.cwd(), dir);
-  for (let entryName of fs.readdirSync(dir)) {
-    console.log(`Generating lockfile for ${ entryName }...`);
-    let pkgDir = path.join(dir, entryName);
-
-    let stat = fs.statSync(pkgDir);
-    if (!stat.isDirectory()) {
-      continue;
-    }
+export async function updateLocks(dirs: string[], isYarn: boolean) {
+  for (let dir of dirs) {
+    dir = path.resolve(process.cwd(), dir);
+    console.log(`Generating lockfile for ${ dir }...`);
 
     try {
-      let lockfile = generateLockfile(pkgDir, dir);
+      let lockfile = generateLockfile(dir, isYarn);
       if (lockfile) {
-        await saveLockfile(pkgDir, lockfile);
+        await saveLockfile(dir, lockfile);
       }
     } catch (e) {
-      console.error(`Error generating lockfile for package ${ entryName }: ${ e.message }`, e);
+      console.error(`Error generating lockfile for package ${ dir }: ${ e.message }`, e);
     }
   }
-
-  let topDir = path.dirname(dir);
-  console.log(`Generating lockfile for workspace root...`);
-  await saveLockfile(topDir, generateLockfile(topDir, dir));
 }

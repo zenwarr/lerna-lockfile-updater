@@ -3,17 +3,17 @@ export type EntryDeps = { [name: string]: Entry }
 
 export interface Entry {
   version: string;
-  integrity: string | undefined;
-  resolved: string | undefined;
-  requires: { [name: string]: string } | undefined;
-  dependencies: EntryDeps | undefined;
+  integrity?: string;
+  resolved?: string;
+  requires?: { [name: string]: string };
+  dependencies?: EntryDeps;
   dev?: boolean;
   optional?: boolean;
 }
 
 
 export interface BuildContext {
-  packagesDir: string;
+  isYarn: boolean;
   startDir: string;
   rootDeps: EntryDeps;
   visited: Set<string>;
