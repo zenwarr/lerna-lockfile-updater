@@ -1,6 +1,6 @@
 import { BuildContext } from "./Interfaces";
 import { readManifestIfExists } from "./ManifestReader";
-import { findMetaInYarnLock, readYarnLockIfExists } from "./YarnLock";
+import { findMetaInYarnLock } from "./YarnLock";
 
 
 export interface MetaInfo {
@@ -20,21 +20,19 @@ export function getMetaInfo(ctx: BuildContext, dir: string): MetaInfo {
     return {};
   }
 
-  if (ctx.isYarn) {
-    if (!ctx.yarnLockDir) {
-      return {};
-    }
+  let result: MetaInfo = {
+    resolved: manifest._resolved,
+    integrity: manifest._integrity
+  };
 
-    let lockfile = readYarnLockIfExists(ctx.yarnLockDir);
-    if (!lockfile) {
-      return {};
-    }
+  let isIncomplete = !result.integrity || !result.resolved;
 
-    return findMetaInYarnLock(lockfile, manifest.name, manifest.version);
-  } else {
-    return {
-      resolved: manifest._resolved,
-      integrity: manifest._integrity
+  if (isIncomplete && ctx.yarnLock) {
+    result = {
+      ...result,
+      ...findMetaInYarnLock(ctx.yarnLock, manifest.name, manifest.version)
     };
   }
+
+  return result;
 }

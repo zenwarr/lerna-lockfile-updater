@@ -7,7 +7,7 @@ import { transformInto } from "./TransformObject";
 import { readManifest, readManifestIfExists } from "./ManifestReader";
 import { getClosestParentModulesDir } from "./Utils";
 import { getMetaInfo } from "./MetaInfoResolver";
-import { getYarnLockDir } from "./YarnLock";
+import { getYarnLockDir, readYarnLockIfExists } from "./YarnLock";
 
 
 /**
@@ -135,10 +135,11 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
 /**
  * Generates lockfile for a package located at given directory
  */
-function generateLockfile(dir: string, isYarn: boolean): object | undefined {
+function generateLockfile(dir: string): object | undefined {
+  let yarnLockDir = getYarnLockDir(dir);
+
   let ctx: BuildContext = {
-    isYarn,
-    yarnLockDir: isYarn ? getYarnLockDir(dir) : undefined,
+    yarnLock: yarnLockDir ? readYarnLockIfExists(yarnLockDir) : undefined,
     startDir: dir,
     rootDeps: {},
     visited: new Set(),
@@ -223,13 +224,13 @@ function markOptionalDeps(ctx: BuildContext) {
 }
 
 
-export async function updateLocks(dirs: string[], isYarn: boolean) {
+export async function updateLocks(dirs: string[]) {
   for (let dir of dirs) {
     dir = path.resolve(process.cwd(), dir);
     console.log(`Generating lockfile for ${ dir }...`);
 
     try {
-      let lockfile = generateLockfile(dir, isYarn);
+      let lockfile = generateLockfile(dir);
       if (lockfile) {
         await saveLockfile(dir, lockfile);
       } else {
