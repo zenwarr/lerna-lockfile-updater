@@ -118,12 +118,12 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
       depsObject = getDependencyTarget(ctx, modulesDir);
     }
 
-    if (!(depName in depsObject)) {
-      let depEntry = buildLockfileEntry(ctx, resolvedDir, false);
-      depsObject[depName] = depEntry;
+    if (depName in depsObject) {
+      let depEntry = depsObject[depName]!;
       entryResolves.set(depName, depEntry);
     } else {
-      let depEntry = depsObject[depName];
+      let depEntry = buildLockfileEntry(ctx, resolvedDir, false);
+      depsObject[depName] = depEntry;
       entryResolves.set(depName, depEntry);
     }
   }

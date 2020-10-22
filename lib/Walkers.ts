@@ -9,9 +9,9 @@ export function walkEntries(deps: EntryDeps | undefined, walker: (dep: Entry) =>
     return;
   }
 
-  for (let name of Object.keys(deps)) {
-    walkEntries(deps[name].dependencies, walker);
-    walker(deps[name]);
+  for (let value of Object.values(deps)) {
+    walkEntries(value.dependencies, walker);
+    walker(value);
   }
 }
 
