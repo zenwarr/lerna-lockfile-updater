@@ -9,7 +9,7 @@ export function readFile(location: string) {
 
 export function readFileIfExists(location: string) {
   try {
-    return require(location);
+    return readFile(location);
   } catch (e) {
     if (e.code === "ENOENT") {
       return undefined;
