@@ -1,8 +1,9 @@
 import * as path from "path";
+import * as fs from "fs";
 
 
 export function readFile(location: string) {
-  return require(location);
+  return JSON.parse(fs.readFileSync(location, "utf-8"));
 }
 
 
@@ -10,7 +11,7 @@ export function readFileIfExists(location: string) {
   try {
     return require(location);
   } catch (e) {
-    if (e.code === "MODULE_NOT_FOUND") {
+    if (e.code === "ENOENT") {
       return undefined;
     }
     throw e;
