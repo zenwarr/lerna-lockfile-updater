@@ -224,18 +224,23 @@ function markOptionalDeps(ctx: BuildContext) {
 }
 
 
+export async function generateLockFile(dir: string) {
+  let lockfile = generateLockfile(dir);
+  if (lockfile) {
+    await saveLockfile(dir, lockfile);
+  } else {
+    console.log("No packages found in given directory, skipped");
+  }
+}
+
+
 export async function updateLocks(dirs: string[]) {
   for (let dir of dirs) {
     dir = path.resolve(process.cwd(), dir);
     console.log(`Generating lockfile for ${ dir }...`);
 
     try {
-      let lockfile = generateLockfile(dir);
-      if (lockfile) {
-        await saveLockfile(dir, lockfile);
-      } else {
-        console.log("No packages found in given directory, skipped");
-      }
+      await generateLockFile(dir);
     } catch (e) {
       console.error(`Error generating lockfile for package ${ dir }: ${ e.message }`, e);
     }

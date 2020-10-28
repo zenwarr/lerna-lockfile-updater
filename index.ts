@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as argparse from "argparse";
-import { updateLocks } from "./lib/Builder";
+import { generateLockFile, updateLocks } from "./lib/Builder";
 
 
 let parser = new argparse.ArgumentParser({
@@ -23,3 +23,6 @@ let args: {
 updateLocks(args.dirs).catch(error => {
   console.error(`Error while updating lockfiles: ${ error.message }`, error);
 });
+
+
+export { generateLockFile };
