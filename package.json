@@ -22,7 +22,7 @@
     "argparse": "^2.0.1"
   },
   "bin": {
-    "lockfile-generator": "./index.js"
+    "lockfile-generator": "lockfile-generator.js"
   },
   "devDependencies": {
     "@types/argparse": "^2.0.2",
