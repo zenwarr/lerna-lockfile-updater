@@ -1,5 +1,6 @@
 *.js.map
 *.ts
+!*.d.ts
 .github
 .idea
 yarn.lock
