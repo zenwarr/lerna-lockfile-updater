@@ -17,6 +17,9 @@ export interface BuildContext {
   startDir: string;
   rootDeps: EntryDeps;
   visited: Set<string>;
+
+  /**
+   * Maps absolute directory paths to lockfile entries
+   */
   moduleDirs: Map<string, Entry | null>;
-  resolves: Map<Entry, Map<string, Entry>>;
 }

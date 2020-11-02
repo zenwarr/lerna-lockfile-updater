@@ -100,15 +100,14 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
   ctx.visited.add(dir);
   ctx.moduleDirs.set(dir, entry);
 
-  let entryResolves = new Map<string, Entry>();
-  ctx.resolves.set(entry, entryResolves);
-
   for (let depName of Object.keys(requires)) {
+    // find where dependency of this package is installed
     let resolvedDir = resolvePackageLocation(dir, depName);
     if (ctx.visited.has(resolvedDir)) {
       continue;
     }
 
+    // and based on this directory, find in which `dependencies` object the entry should be added (if we need to add it)
     let depsObject: EntryDeps;
 
     let modulesDir = getClosestParentModulesDir(resolvedDir);
@@ -118,13 +117,9 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
       depsObject = getDependencyTarget(ctx, modulesDir);
     }
 
-    if (depName in depsObject) {
-      let depEntry = depsObject[depName]!;
-      entryResolves.set(depName, depEntry);
-    } else {
+    if (!(depName in depsObject)) {
       let depEntry = buildLockfileEntry(ctx, resolvedDir, false);
       depsObject[depName] = depEntry;
-      entryResolves.set(depName, depEntry);
     }
   }
 
@@ -143,8 +138,7 @@ function generateLockfile(dir: string): object | undefined {
     startDir: dir,
     rootDeps: {},
     visited: new Set(),
-    moduleDirs: new Map(),
-    resolves: new Map(),
+    moduleDirs: new Map()
   };
 
   let manifest = readManifestIfExists(dir);
