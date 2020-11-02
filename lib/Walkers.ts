@@ -16,22 +16,20 @@ export function walkEntries(deps: EntryDeps | undefined, walker: (dep: Entry) =>
 }
 
 
-function resolveDependencyEntryIfExists(ctx: BuildContext, parent: Entry, name: string): Entry | undefined {
+function resolveDependencyEntryIfExists(parent: Entry, name: string): Entry | undefined {
   return parent.dependencies ? parent.dependencies[name] : undefined;
 }
 
 
-function resolveDependencyEntry(ctx: BuildContext, parentName: string, parent: Entry, depName: string, parents: Entry[]): Entry {
-  let resolvedEntry = resolveDependencyEntryIfExists(ctx, parent, depName);
-  if (resolvedEntry) {
-    return resolvedEntry;
-  }
-
-  for (let q = parents.length - 1; q >= 0; --q) {
-    resolvedEntry = resolveDependencyEntryIfExists(ctx, parents[q], depName);
-    if (resolvedEntry) {
-      return resolvedEntry;
+function resolveDependencyEntry(ctx: BuildContext, parent: Entry, parentName: string, depName: string): Entry {
+  let curOwner: Entry | undefined = parent;
+  while (curOwner != null) {
+    const resolved = resolveDependencyEntryIfExists(curOwner, depName);
+    if (resolved) {
+      return resolved;
     }
+
+    curOwner = curOwner.owner;
   }
 
   throw new Error(`Internal error: failed to resolve entry for ${ parentName } -> ${ depName }`);
@@ -42,7 +40,7 @@ function resolveDependencyEntry(ctx: BuildContext, parentName: string, parent: E
  * Recursively walks all dependencies of given entry.
  * The difference from `walkEntries` is that this function enumerates all items in `requires` field and resolves them.
  */
-export function walkDeps(ctx: BuildContext, entryName: string, entry: Entry, walker: (dep: Entry) => void, parents: Entry[], walked?: Set<Entry>) {
+export function walkDeps(ctx: BuildContext, entryName: string, entry: Entry, walker: (dep: Entry) => void, walked?: Set<Entry>) {
   if (!walked) {
     walked = new Set();
   }
@@ -58,11 +56,11 @@ export function walkDeps(ctx: BuildContext, entryName: string, entry: Entry, wal
   }
 
   for (let packageName of Object.keys(entry.requires)) {
-    const resolvedEntry = resolveDependencyEntry(ctx, entryName, entry, packageName, parents);
+    const resolvedEntry = resolveDependencyEntry(ctx, entry, entryName, packageName);
 
     walker(resolvedEntry);
 
-    walkDeps(ctx, packageName, resolvedEntry, walker, [ ...parents, entry ], walked);
+    walkDeps(ctx, packageName, resolvedEntry, walker, walked);
   }
 }
 
@@ -83,7 +81,7 @@ export function walkNonSubsetDeps(ctx: BuildContext, subset: string[], walker: (
     }
 
     subsetDeps.add(entry);
-    walkDeps(ctx, packageName, entry, e => subsetDeps.add(e), [ ctx.root ]);
+    walkDeps(ctx, packageName, entry, e => subsetDeps.add(e));
   }
 
   walkEntries(ctx.root.dependencies, e => {

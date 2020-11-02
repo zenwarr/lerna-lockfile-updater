@@ -66,21 +66,12 @@ function getRequires(dir: string, includeDev: boolean = false) {
 /**
  * Given location of `node_modules` directory a package is located in, returns `dependencies` object where the entry for this package should be added.
  */
-function getDependenciesObjectForDir(ctx: BuildContext, moduleDir: string): EntryDeps {
-  let target = ctx.dirEntries.get(moduleDir);
-  if (!target) {
-    target = ctx.root;
-  }
-
-  if (!target.dependencies) {
-    target.dependencies = {};
-  }
-
-  return target.dependencies;
+function getOwnerForDir(ctx: BuildContext, moduleDir: string): Entry {
+  return ctx.dirEntries.get(moduleDir) || ctx.root;
 }
 
 
-function buildLockfileEntryWithoutDeps(dir: string, isRoot: boolean, yarnLock: any): Entry {
+function buildEntryWithoutDeps(dir: string, isRoot: boolean, yarnLock: any): Entry {
   const manifest = readManifest(dir);
   const requires = getRequires(dir, isRoot);
 
@@ -105,31 +96,37 @@ function processEntryDeps(ctx: BuildContext, entry: Entry, dir: string): void {
       continue;
     }
 
-    const depEntry = buildLockfileEntryWithoutDeps(resolvedDir, false, ctx.yarnLock);
+    const depEntry = buildEntryWithoutDeps(resolvedDir, false, ctx.yarnLock);
 
     // and based on this directory, find in which `dependencies` object the entry should be added (if we need to add it)
-    let depsObject: EntryDeps;
+    let owner: Entry;
 
     let modulesDir = getOwnerDir(resolvedDir);
     if (!modulesDir) {
       if (!ctx.root.dependencies) {
         ctx.root.dependencies = {};
       }
-      depsObject = ctx.root.dependencies;
+      owner = ctx.root;
     } else {
-      depsObject = getDependenciesObjectForDir(ctx, modulesDir);
+      owner = getOwnerForDir(ctx, modulesDir);
     }
 
-    const existingEntry = depsObject[depName];
+    if (!owner.dependencies) {
+      owner.dependencies = {};
+    }
+
+    const existingEntry = owner.dependencies[depName];
     if (existingEntry && existingEntry.version !== depEntry.version) {
-      if (!entry.dependencies) {
-        entry.dependencies = {};
-      }
-      depsObject = entry.dependencies;
+      owner = entry;
     }
 
-    if (!(depName in depsObject)) {
-      depsObject[depName] = depEntry;
+    if (!owner.dependencies) {
+      owner.dependencies = {};
+    }
+
+    if (!(depName in owner.dependencies)) {
+      owner.dependencies[depName] = depEntry;
+      depEntry.owner = owner;
       jobs.push({ entry: depEntry, dir: resolvedDir });
     }
   }
@@ -150,7 +147,7 @@ function generateLockfile(dir: string): object | undefined {
   let ctx: BuildContext = {
     yarnLock,
     startDir: dir,
-    root: buildLockfileEntryWithoutDeps(dir, true, yarnLock),
+    root: buildEntryWithoutDeps(dir, true, yarnLock),
     visitedDirs: new Set(),
     dirEntries: new Map()
   };
@@ -162,6 +159,9 @@ function generateLockfile(dir: string): object | undefined {
 
   processEntryDeps(ctx, ctx.root, dir);
 
+  markDevDeps(ctx);
+  markOptionalDeps(ctx);
+
   walkEntries(ctx.root.dependencies, dep => {
     if (dep.dependencies && !Object.keys(dep.dependencies).length) {
       delete dep.dependencies;
@@ -170,10 +170,9 @@ function generateLockfile(dir: string): object | undefined {
     if (dep.requires && !Object.keys(dep.requires).length) {
       delete dep.requires;
     }
-  });
 
-  markDevDeps(ctx);
-  markOptionalDeps(ctx);
+    delete dep.owner;
+  });
 
   return {
     name: manifest.name,

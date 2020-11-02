@@ -9,6 +9,7 @@ export interface Entry {
   dependencies?: EntryDeps;
   dev?: boolean;
   optional?: boolean;
+  owner?: Entry;
 }
 
 
