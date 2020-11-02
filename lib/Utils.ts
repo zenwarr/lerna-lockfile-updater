@@ -20,14 +20,15 @@ export function readFileIfExists(location: string) {
 
 
 /**
- * Given a path, returns a path to the closest parent `node_modules` directory, if exists.
+ * Given a path, returns a path to the module that owns `node_modules` directory `location` is located in.
+ * If `location` is outside any `node_modules`, returns `undefined`.
  */
-export function getClosestParentModulesDir(location: string): string | undefined {
+export function getOwnerDir(location: string): string | undefined {
   let root = path.parse(location).root;
 
   while (true) {
     if (path.basename(location) === "node_modules") {
-      return location;
+      return path.dirname(location);
     } else if (location === root) {
       return undefined;
     }

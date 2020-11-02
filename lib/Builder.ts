@@ -5,7 +5,7 @@ import { walkEntries, walkNonSubsetDeps } from "./Walkers";
 import { readFileFromHeadOrNow } from "./GitUtils";
 import { transformInto } from "./TransformObject";
 import { readManifest, readManifestIfExists } from "./ManifestReader";
-import { getClosestParentModulesDir } from "./Utils";
+import { getOwnerDir } from "./Utils";
 import { getMetaInfo } from "./MetaInfoResolver";
 import { getYarnLockDir, readYarnLockIfExists } from "./YarnLock";
 
@@ -67,8 +67,6 @@ function getRequires(dir: string, includeDev: boolean = false) {
  * Given location of `node_modules` directory a package is located in, returns `dependencies` object where the entry for this package should be added.
  */
 function getDependencyTarget(ctx: BuildContext, modulesDir: string): EntryDeps {
-  modulesDir = path.dirname(modulesDir);
-
   let target = ctx.moduleDirs.get(modulesDir);
   if (!target) {
     return ctx.rootDeps;
@@ -110,7 +108,7 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
     // and based on this directory, find in which `dependencies` object the entry should be added (if we need to add it)
     let depsObject: EntryDeps;
 
-    let modulesDir = getClosestParentModulesDir(resolvedDir);
+    let modulesDir = getOwnerDir(resolvedDir);
     if (!modulesDir) {
       depsObject = ctx.rootDeps;
     } else {
@@ -118,8 +116,7 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
     }
 
     if (!(depName in depsObject)) {
-      let depEntry = buildLockfileEntry(ctx, resolvedDir, false);
-      depsObject[depName] = depEntry;
+      depsObject[depName] = buildLockfileEntry(ctx, resolvedDir, false);
     }
   }
 
