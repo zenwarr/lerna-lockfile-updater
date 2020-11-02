@@ -34,11 +34,6 @@ function resolveDependencyEntry(ctx: BuildContext, parentName: string, parent: E
     }
   }
 
-  const rootDep = ctx.rootDeps[depName];
-  if (rootDep) {
-    return rootDep;
-  }
-
   throw new Error(`Internal error: failed to resolve entry for ${ parentName } -> ${ depName }`);
 }
 
@@ -47,7 +42,7 @@ function resolveDependencyEntry(ctx: BuildContext, parentName: string, parent: E
  * Recursively walks all dependencies of given entry.
  * The difference from `walkEntries` is that this function enumerates all items in `requires` field and resolves them.
  */
-export function walkDeps(ctx: BuildContext, entryName: string, entry: Entry, walker: (dep: Entry) => void, parents: Entry[] = [], walked?: Set<Entry>) {
+export function walkDeps(ctx: BuildContext, entryName: string, entry: Entry, walker: (dep: Entry) => void, parents: Entry[], walked?: Set<Entry>) {
   if (!walked) {
     walked = new Set();
   }
@@ -76,18 +71,22 @@ export function walkDeps(ctx: BuildContext, entryName: string, entry: Entry, wal
  * Walks all entries not required by at least one of given packages or dependencies of these packages.
  */
 export function walkNonSubsetDeps(ctx: BuildContext, subset: string[], walker: (entry: Entry) => void) {
+  if (!ctx.root.dependencies) {
+    return;
+  }
+
   let subsetDeps = new Set<Entry>();
   for (let packageName of subset) {
-    let entry = ctx.rootDeps[packageName];
+    let entry = ctx.root.dependencies[packageName];
     if (!entry) {
       continue;
     }
 
     subsetDeps.add(entry);
-    walkDeps(ctx, packageName, entry, e => subsetDeps.add(e));
+    walkDeps(ctx, packageName, entry, e => subsetDeps.add(e), [ ctx.root ]);
   }
 
-  walkEntries(ctx.rootDeps, e => {
+  walkEntries(ctx.root.dependencies, e => {
     if (!subsetDeps.has(e)) {
       walker(e);
     }

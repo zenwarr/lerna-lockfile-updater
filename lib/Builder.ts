@@ -66,11 +66,13 @@ function getRequires(dir: string, includeDev: boolean = false) {
 /**
  * Given location of `node_modules` directory a package is located in, returns `dependencies` object where the entry for this package should be added.
  */
-function getDependencyTarget(ctx: BuildContext, modulesDir: string): EntryDeps {
-  let target = ctx.moduleDirs.get(modulesDir);
+function getDependenciesObjectForDir(ctx: BuildContext, moduleDir: string): EntryDeps {
+  let target = ctx.dirEntries.get(moduleDir);
   if (!target) {
-    return ctx.rootDeps;
-  } else if (!target.dependencies) {
+    target = ctx.root;
+  }
+
+  if (!target.dependencies) {
     target.dependencies = {};
   }
 
@@ -78,49 +80,63 @@ function getDependencyTarget(ctx: BuildContext, modulesDir: string): EntryDeps {
 }
 
 
-/**
- * Creates lockfile entry for a package located inside given directory.
- * If `includeDev` is true, `devDependencies` are also included.
- * When generating lockfile, only devDependencies of the root package should be taken into account.
- */
-function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean): Entry {
-  let manifest = readManifest(dir);
+function buildLockfileEntryWithoutDeps(dir: string, isRoot: boolean, yarnLock: any): Entry {
+  const manifest = readManifest(dir);
+  const requires = getRequires(dir, isRoot);
 
-  let requires = getRequires(dir, includeDev);
-
-  let entry: Entry = {
+  return {
     version: manifest.version,
-    ...getMetaInfo(ctx, dir),
+    ...getMetaInfo(dir, yarnLock),
     requires: requires,
     dependencies: {}
   };
+}
 
-  ctx.visited.add(dir);
-  ctx.moduleDirs.set(dir, entry);
 
-  for (let depName of Object.keys(requires)) {
+function processEntryDeps(ctx: BuildContext, entry: Entry, dir: string): void {
+  ctx.visitedDirs.add(dir);
+  ctx.dirEntries.set(dir, entry);
+
+  const jobs: { entry: Entry, dir: string }[] = [];
+  for (let depName of Object.keys(entry.requires || {})) {
     // find where dependency of this package is installed
     let resolvedDir = resolvePackageLocation(dir, depName);
-    if (ctx.visited.has(resolvedDir)) {
+    if (ctx.visitedDirs.has(resolvedDir)) {
       continue;
     }
+
+    const depEntry = buildLockfileEntryWithoutDeps(resolvedDir, false, ctx.yarnLock);
 
     // and based on this directory, find in which `dependencies` object the entry should be added (if we need to add it)
     let depsObject: EntryDeps;
 
     let modulesDir = getOwnerDir(resolvedDir);
     if (!modulesDir) {
-      depsObject = ctx.rootDeps;
+      if (!ctx.root.dependencies) {
+        ctx.root.dependencies = {};
+      }
+      depsObject = ctx.root.dependencies;
     } else {
-      depsObject = getDependencyTarget(ctx, modulesDir);
+      depsObject = getDependenciesObjectForDir(ctx, modulesDir);
+    }
+
+    const existingEntry = depsObject[depName];
+    if (existingEntry && existingEntry.version !== depEntry.version) {
+      if (!entry.dependencies) {
+        entry.dependencies = {};
+      }
+      depsObject = entry.dependencies;
     }
 
     if (!(depName in depsObject)) {
-      depsObject[depName] = buildLockfileEntry(ctx, resolvedDir, false);
+      depsObject[depName] = depEntry;
+      jobs.push({ entry: depEntry, dir: resolvedDir });
     }
   }
 
-  return entry;
+  for (const job of jobs) {
+    processEntryDeps(ctx, job.entry, job.dir);
+  }
 }
 
 
@@ -130,12 +146,13 @@ function buildLockfileEntry(ctx: BuildContext, dir: string, includeDev: boolean)
 function generateLockfile(dir: string): object | undefined {
   let yarnLockDir = getYarnLockDir(dir);
 
+  let yarnLock = yarnLockDir ? readYarnLockIfExists(yarnLockDir) : undefined;
   let ctx: BuildContext = {
-    yarnLock: yarnLockDir ? readYarnLockIfExists(yarnLockDir) : undefined,
+    yarnLock,
     startDir: dir,
-    rootDeps: {},
-    visited: new Set(),
-    moduleDirs: new Map()
+    root: buildLockfileEntryWithoutDeps(dir, true, yarnLock),
+    visitedDirs: new Set(),
+    dirEntries: new Map()
   };
 
   let manifest = readManifestIfExists(dir);
@@ -143,13 +160,9 @@ function generateLockfile(dir: string): object | undefined {
     return undefined;
   }
 
-  let entry = buildLockfileEntry(ctx, dir, true);
-  ctx.rootDeps = {
-    ...ctx.rootDeps,
-    ...entry.dependencies
-  };
+  processEntryDeps(ctx, ctx.root, dir);
 
-  walkEntries(ctx.rootDeps, dep => {
+  walkEntries(ctx.root.dependencies, dep => {
     if (dep.dependencies && !Object.keys(dep.dependencies).length) {
       delete dep.dependencies;
     }
@@ -164,10 +177,10 @@ function generateLockfile(dir: string): object | undefined {
 
   return {
     name: manifest.name,
-    version: manifest.version,
+    version: ctx.root.version,
     lockfileVersion: 1,
     requires: true,
-    dependencies: ctx.rootDeps
+    dependencies: ctx.root.dependencies
   };
 }
 

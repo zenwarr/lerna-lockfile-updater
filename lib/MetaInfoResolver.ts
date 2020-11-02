@@ -11,10 +11,10 @@ export interface MetaInfo {
 
 /**
  * Tries to resolve information for `resolved` and `integrity` fields for given package
- * @param ctx
  * @param dir Directory for package to resolve information on
+ * @param yarnLock yarn.lock contents
  */
-export function getMetaInfo(ctx: BuildContext, dir: string): MetaInfo {
+export function getMetaInfo(dir: string, yarnLock: any): MetaInfo {
   let manifest = readManifestIfExists(dir);
   if (!manifest) {
     return {};
@@ -27,10 +27,10 @@ export function getMetaInfo(ctx: BuildContext, dir: string): MetaInfo {
 
   let isIncomplete = !result.integrity || !result.resolved;
 
-  if (isIncomplete && ctx.yarnLock) {
+  if (isIncomplete && yarnLock) {
     result = {
       ...result,
-      ...findMetaInYarnLock(ctx.yarnLock, manifest.name, manifest.version)
+      ...findMetaInYarnLock(yarnLock, manifest.name, manifest.version)
     };
   }
 

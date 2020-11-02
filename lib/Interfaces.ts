@@ -15,11 +15,11 @@ export interface Entry {
 export interface BuildContext {
   yarnLock?: string;
   startDir: string;
-  rootDeps: EntryDeps;
-  visited: Set<string>;
+  root: Entry;
+  visitedDirs: Set<string>;
 
   /**
    * Maps absolute directory paths to lockfile entries
    */
-  moduleDirs: Map<string, Entry | null>;
+  dirEntries: Map<string, Entry>;
 }
