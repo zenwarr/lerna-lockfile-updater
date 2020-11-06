@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as resolvePackagePath from "resolve-package-path";
 import { BuildContext, Entry, EntryDeps } from "./Interfaces";
 import { walkEntries, walkNonSubsetDeps } from "./Walkers";
 import { readFileFromHeadOrNow } from "./GitUtils";
@@ -10,15 +11,17 @@ import { getMetaInfo } from "./MetaInfoResolver";
 import { getYarnLockDir, readYarnLockIfExists } from "./YarnLock";
 
 
+const PACKAGE_NOT_FOUND_CODE = "PACKAGE_NOT_FOUND";
+
+
 /**
  * Returns directory where package is located when required from directory `fromDir`
  * @param fromDir Directory from where to resolve the package
  * @param packageName Package name
  */
-function resolvePackageLocation(fromDir: string, packageName: string): string {
-  return path.dirname(require.resolve(packageName + "/package.json", {
-    paths: [ fromDir ]
-  }));
+function resolvePackageLocation(fromDir: string, packageName: string): string | undefined {
+  const result = resolvePackagePath(packageName, fromDir);
+  return result ? path.dirname(result) : undefined;
 }
 
 
@@ -26,15 +29,7 @@ function resolvePackageLocation(fromDir: string, packageName: string): string {
  * Checks if package is available from given directory
  */
 function isInstalled(dir: string, packageName: string): boolean {
-  try {
-    resolvePackageLocation(dir, packageName);
-    return true;
-  } catch (error) {
-    if (error.code === "MODULE_NOT_FOUND") {
-      return false;
-    }
-    throw error;
-  }
+  return !!resolvePackageLocation(dir, packageName);
 }
 
 
@@ -92,6 +87,10 @@ function processEntryDeps(ctx: BuildContext, entry: Entry, dir: string): void {
   for (let depName of Object.keys(entry.requires || {})) {
     // find where dependency of this package is installed
     let resolvedDir = resolvePackageLocation(dir, depName);
+    if (!resolvedDir) {
+      throw new Error(`Package ${ depName } not found (starting from ${ dir })`);
+    }
+
     if (ctx.visitedDirs.has(resolvedDir)) {
       continue;
     }
