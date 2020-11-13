@@ -11,13 +11,19 @@ export interface MetaInfo {
 
 /**
  * Tries to resolve information for `resolved` and `integrity` fields for given package
+ * @param ctx Build context
  * @param dir Directory for package to resolve information on
  * @param yarnLock yarn.lock contents
  */
-export function getMetaInfo(dir: string, yarnLock: any): MetaInfo {
+export function getMetaInfo(ctx: BuildContext | undefined, dir: string, yarnLock: any): MetaInfo {
   let manifest = readManifestIfExists(dir);
   if (!manifest) {
     return {};
+  }
+
+  const packageName = manifest.name;
+  if (ctx && ctx.localModulesMeta.has(packageName)) {
+    return ctx.localModulesMeta.get(packageName)!;
   }
 
   let result: MetaInfo = {

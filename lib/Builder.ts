@@ -1,17 +1,14 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as resolvePackagePath from "resolve-package-path";
-import { BuildContext, Entry, EntryDeps } from "./Interfaces";
+import { BuildContext, Entry } from "./Interfaces";
 import { walkEntries, walkNonSubsetDeps } from "./Walkers";
 import { readFileFromHeadOrNow } from "./GitUtils";
 import { transformInto } from "./TransformObject";
 import { readManifest, readManifestIfExists } from "./ManifestReader";
 import { getOwnerDir } from "./Utils";
-import { getMetaInfo } from "./MetaInfoResolver";
+import { getMetaInfo, MetaInfo } from "./MetaInfoResolver";
 import { getYarnLockDir, readYarnLockIfExists } from "./YarnLock";
-
-
-const PACKAGE_NOT_FOUND_CODE = "PACKAGE_NOT_FOUND";
 
 
 /**
@@ -66,13 +63,13 @@ function getOwnerForDir(ctx: BuildContext, moduleDir: string): Entry {
 }
 
 
-function buildEntryWithoutDeps(dir: string, isRoot: boolean, yarnLock: any): Entry {
+function buildEntryWithoutDeps(ctx: BuildContext | undefined, dir: string, isRoot: boolean, yarnLock: any): Entry {
   const manifest = readManifest(dir);
   const requires = getRequires(dir, isRoot);
 
   return {
     version: manifest.version,
-    ...getMetaInfo(dir, yarnLock),
+    ...getMetaInfo(ctx, dir, yarnLock),
     requires: requires,
     dependencies: {}
   };
@@ -95,7 +92,7 @@ function processEntryDeps(ctx: BuildContext, entry: Entry, dir: string): void {
       continue;
     }
 
-    const depEntry = buildEntryWithoutDeps(resolvedDir, false, ctx.yarnLock);
+    const depEntry = buildEntryWithoutDeps(ctx, resolvedDir, false, ctx.yarnLock);
 
     // and based on this directory, find in which `dependencies` object the entry should be added (if we need to add it)
     let owner: Entry;
@@ -139,16 +136,17 @@ function processEntryDeps(ctx: BuildContext, entry: Entry, dir: string): void {
 /**
  * Generates lockfile for a package located at given directory
  */
-function generateLockfile(dir: string): object | undefined {
+function generateLockfile(dir: string, localModulesMeta?: Map<string, MetaInfo>): object | undefined {
   let yarnLockDir = getYarnLockDir(dir);
 
   let yarnLock = yarnLockDir ? readYarnLockIfExists(yarnLockDir) : undefined;
   let ctx: BuildContext = {
     yarnLock,
     startDir: dir,
-    root: buildEntryWithoutDeps(dir, true, yarnLock),
+    root: buildEntryWithoutDeps(undefined, dir, true, yarnLock),
     visitedDirs: new Set(),
-    dirEntries: new Map()
+    dirEntries: new Map(),
+    localModulesMeta: localModulesMeta || new Map()
   };
 
   let manifest = readManifestIfExists(dir);
@@ -226,8 +224,8 @@ function markOptionalDeps(ctx: BuildContext) {
 }
 
 
-export async function generateLockFile(dir: string) {
-  let lockfile = generateLockfile(dir);
+export async function generateLockFile(dir: string, localModulesMeta?: Map<string, MetaInfo>) {
+  let lockfile = generateLockfile(dir, localModulesMeta);
   if (lockfile) {
     await saveLockfile(dir, lockfile);
   } else {

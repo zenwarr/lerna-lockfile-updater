@@ -1,3 +1,5 @@
+import { MetaInfo } from "./MetaInfoResolver";
+
 export type EntryDeps = { [name: string]: Entry }
 
 
@@ -23,4 +25,6 @@ export interface BuildContext {
    * Maps absolute directory paths to lockfile entries
    */
   dirEntries: Map<string, Entry>;
+
+  localModulesMeta: Map<string, MetaInfo>;
 }
